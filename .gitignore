@@ -1,0 +1,29 @@
+# Maven
+bus-management/target/
+bus-management/.mvn/wrapper/maven-wrapper.jar
+*.class
+
+# Node
+bus-management-frontend/node_modules/
+bus-management-frontend/node/
+bus-management-frontend/dist/
+
+# Frontend build output (bundled into backend JAR)
+bus-management/src/main/resources/static/assets/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
