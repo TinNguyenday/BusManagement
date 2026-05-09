@@ -1,0 +1,49 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: bus-management
+
+  datasource:
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:bus_management}
+    username: ${PGUSER:postgres}
+    password: ${PGPASSWORD:123456}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    defer-datasource-initialization: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+
+  sql:
+    init:
+      mode: never
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:756470315095-s0thpbkbcma2m6svu31t9uegp7rn1ug3.apps.googleusercontent.com}
+            client-secret: ${GOOGLE_CLIENT_SECRET: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}
+            scope:
+              - email
+              - profile
+
+jwt:
+  secret: ${JWT_SECRET:bus-management-super-secret-key-change-this-in-production-min-256-bits-long}
+  expiration: 86400000
+
+app:
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:5173}
+
+logging:
+  level:
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

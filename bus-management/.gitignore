@@ -1,0 +1,15 @@
+target/
+*.jar
+*.war
+*.ear
+.vscode/
+.idea/
+*.iml
+.claude/settings.local.json
+.DS_Store
+Thumbs.db
+
+# Frontend dependencies
+frontend/node_modules/
+frontend/node/
+frontend/dist/
