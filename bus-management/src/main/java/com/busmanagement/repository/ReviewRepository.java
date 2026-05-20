@@ -2,6 +2,7 @@ package com.busmanagement.repository;
 
 import com.busmanagement.entity.Review;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -20,4 +21,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     @Query("SELECT COUNT(r) FROM Review r WHERE r.ticket.vehicleRoute.id = :vehicleRouteId")
     Integer getReviewCountByVehicleRouteId(@Param("vehicleRouteId") Long vehicleRouteId);
+
+    @Modifying
+    @Query("DELETE FROM Review r WHERE r.ticket.customer.id = :customerId")
+    void deleteByCustomerId(@Param("customerId") Long customerId);
 }

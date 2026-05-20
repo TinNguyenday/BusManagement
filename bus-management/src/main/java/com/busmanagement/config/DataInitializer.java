@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -79,6 +80,8 @@ public class DataInitializer implements CommandLineRunner {
                         log.info("✓ owner1 / owner123  →  Nhà xe Thành Công");
                 }
 
+                refreshFutureRoutesIfNeeded();
+
                 if (!userRepository.existsByUsername("customer1")) {
                         Role customerRole = roleRepository.findByName("CUSTOMER").orElseThrow();
                         userRepository.save(User.builder()
@@ -111,6 +114,18 @@ public class DataInitializer implements CommandLineRunner {
                                 .phone("0912000002").idCardNumber("079087654322")
                                 .licenseNumber("LX005678").licenseClass("E")
                                 .licenseExpiry(LocalDate.of(2026, 12, 31)).build());
+
+                driverRepository.save(Driver.builder()
+                                .busCompany(company).fullName("Phạm Văn Bình")
+                                .phone("0912000003").idCardNumber("079087654323")
+                                .licenseNumber("LX009001").licenseClass("D")
+                                .licenseExpiry(LocalDate.of(2025, 6, 23)).build());
+
+                driverRepository.save(Driver.builder()
+                                .busCompany(company).fullName("Lê Văn Cường")
+                                .phone("0912000004").idCardNumber("079087654324")
+                                .licenseNumber("LX009002").licenseClass("E")
+                                .licenseExpiry(LocalDate.of(2028, 12, 31)).build());
 
                 Route r1 = routeRepository.save(Route.builder()
                                 .name("Hà Nội - TP.HCM").origin("Hà Nội").destination("TP.HCM")
@@ -150,6 +165,38 @@ public class DataInitializer implements CommandLineRunner {
                                 .status("SCHEDULED").build());
 
                 log.info(" Data mẫu: 2 xe, 2 tài xế, 3 tuyến, 4 chuyến sắp tới");
+        }
+
+        private void refreshFutureRoutesIfNeeded() {
+                LocalDateTime now = LocalDateTime.now();
+                if (!vehicleRouteRepository.findAllScheduled(now).isEmpty()) return;
+
+                userRepository.findByUsername("owner1").flatMap(owner ->
+                        busCompanyRepository.findByOwnerId(owner.getId())
+                ).ifPresent(company -> {
+                        List<Vehicle> vehicles = vehicleRepository.findByBusCompanyId(company.getId());
+                        List<Driver> drivers = driverRepository.findByBusCompanyId(company.getId());
+                        List<Route> routes = routeRepository.findAll();
+                        if (vehicles.size() < 2 || drivers.size() < 2 || routes.isEmpty()) return;
+
+                        vehicleRouteRepository.save(VehicleRoute.builder()
+                                .vehicle(vehicles.get(0)).driver(drivers.get(0)).route(routes.get(0))
+                                .departureTime(now.plusDays(1).withHour(8).withMinute(0).withSecond(0))
+                                .status("SCHEDULED").build());
+                        vehicleRouteRepository.save(VehicleRoute.builder()
+                                .vehicle(vehicles.get(1)).driver(drivers.get(1)).route(routes.get(1 % routes.size()))
+                                .departureTime(now.plusDays(1).withHour(14).withMinute(0).withSecond(0))
+                                .status("SCHEDULED").build());
+                        vehicleRouteRepository.save(VehicleRoute.builder()
+                                .vehicle(vehicles.get(0)).driver(drivers.get(1)).route(routes.get(2 % routes.size()))
+                                .departureTime(now.plusDays(2).withHour(20).withMinute(0).withSecond(0))
+                                .status("SCHEDULED").build());
+                        vehicleRouteRepository.save(VehicleRoute.builder()
+                                .vehicle(vehicles.get(1)).driver(drivers.get(0)).route(routes.get(0))
+                                .departureTime(now.plusDays(3).withHour(7).withMinute(30).withSecond(0))
+                                .status("SCHEDULED").build());
+                        log.info("✓ Refreshed: 4 chuyến mới vì tất cả đã quá hạn");
+                });
         }
 
         private void createRoleIfNotExists(String name) {

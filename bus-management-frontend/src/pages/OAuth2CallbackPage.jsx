@@ -17,7 +17,7 @@ export default function OAuth2CallbackPage() {
     const status = params.get('status');
 
     if (!token) {
-      navigate('/login');
+      navigate('/login', { state: { message: 'Tài khoản của bạn đang chờ được duyệt.' } });
       return;
     }
 
@@ -25,7 +25,8 @@ export default function OAuth2CallbackPage() {
 
     if (role === 'ADMIN') window.location.href = '/admin/companies';
     else if (role === 'STAFF') window.location.href = '/staff/routes';
-    else window.location.href = '/owner/company';
+    else if (role === 'OWNER') window.location.href = '/owner/dashboard';
+    else window.location.href = '/customer/search';
   }, []);
 
   return (

@@ -38,6 +38,13 @@ public class OwnerController {
         return ResponseEntity.ok(busCompanyService.getByOwnerId(ownerId));
     }
 
+    @PutMapping("/my-company")
+    public ResponseEntity<BusCompany> updateCompany(@RequestBody java.util.Map<String, String> body,
+                                                    @AuthenticationPrincipal Long ownerId) {
+        return ResponseEntity.ok(busCompanyService.updateInfo(ownerId,
+                body.get("phone"), body.get("address"), body.get("bankName"), body.get("bankAccountNumber")));
+    }
+
     // ===== Vehicles =====
     @GetMapping("/vehicles")
     public ResponseEntity<List<Vehicle>> getVehicles(@AuthenticationPrincipal Long ownerId) {
@@ -48,6 +55,20 @@ public class OwnerController {
     public ResponseEntity<Vehicle> createVehicle(@Valid @RequestBody VehicleRequest req,
                                                  @AuthenticationPrincipal Long ownerId) {
         return ResponseEntity.ok(vehicleService.create(req, ownerId));
+    }
+
+    @PutMapping("/vehicles/{id}")
+    public ResponseEntity<Vehicle> updateVehicle(@PathVariable Long id,
+                                                 @Valid @RequestBody VehicleRequest req,
+                                                 @AuthenticationPrincipal Long ownerId) {
+        return ResponseEntity.ok(vehicleService.update(id, req, ownerId));
+    }
+
+    @PatchMapping("/vehicles/{id}/type")
+    public ResponseEntity<Vehicle> updateVehicleType(@PathVariable Long id,
+                                                     @RequestBody java.util.Map<String, String> body,
+                                                     @AuthenticationPrincipal Long ownerId) {
+        return ResponseEntity.ok(vehicleService.updateType(id, body.get("vehicleType"), ownerId));
     }
 
     @DeleteMapping("/vehicles/{id}")
@@ -67,6 +88,13 @@ public class OwnerController {
     public ResponseEntity<Driver> createDriver(@Valid @RequestBody DriverRequest req,
                                                @AuthenticationPrincipal Long ownerId) {
         return ResponseEntity.ok(driverService.create(req, ownerId));
+    }
+
+    @PutMapping("/drivers/{id}")
+    public ResponseEntity<Driver> updateDriver(@PathVariable Long id,
+                                               @Valid @RequestBody DriverRequest req,
+                                               @AuthenticationPrincipal Long ownerId) {
+        return ResponseEntity.ok(driverService.update(id, req, ownerId));
     }
 
     @DeleteMapping("/drivers/{id}")

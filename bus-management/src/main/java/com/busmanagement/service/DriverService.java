@@ -54,6 +54,22 @@ public class DriverService {
         return driverRepository.save(driver);
     }
 
+    public Driver update(Long driverId, DriverRequest req, Long ownerId) {
+        Driver d = driverRepository.findById(driverId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy tài xế"));
+        if (!d.getBusCompany().getOwner().getId().equals(ownerId))
+            throw new ApiException(HttpStatus.FORBIDDEN, "Không phải tài xế của bạn");
+        if (!d.getLicenseNumber().equals(req.getLicenseNumber()) && driverRepository.existsByLicenseNumber(req.getLicenseNumber()))
+            throw new ApiException(HttpStatus.CONFLICT, "Số GPLX đã tồn tại");
+        d.setFullName(req.getFullName());
+        d.setPhone(req.getPhone());
+        d.setIdCardNumber(req.getIdCardNumber());
+        d.setLicenseNumber(req.getLicenseNumber());
+        d.setLicenseClass(req.getLicenseClass());
+        d.setLicenseExpiry(req.getLicenseExpiry());
+        return driverRepository.save(d);
+    }
+
     @Transactional
     public void delete(Long driverId, Long ownerId) {
         Driver d = driverRepository.findById(driverId)

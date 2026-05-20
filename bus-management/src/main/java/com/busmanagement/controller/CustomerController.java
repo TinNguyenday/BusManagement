@@ -4,6 +4,9 @@ import com.busmanagement.dto.request.BookTicketRequest;
 import com.busmanagement.dto.request.ReviewRequest;
 import com.busmanagement.dto.response.ReviewResponse;
 import com.busmanagement.dto.response.ScheduleSearchResponse;
+import com.busmanagement.dto.response.SuggestionResponse;
+import com.busmanagement.entity.Route;
+import com.busmanagement.repository.RouteRepository;
 import com.busmanagement.entity.Ticket;
 import com.busmanagement.entity.VehicleRoute;
 import com.busmanagement.exception.ApiException;
@@ -25,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/api/customer")
@@ -36,6 +40,16 @@ public class CustomerController {
     private final VehicleRouteRepository vehicleRouteRepository;
     private final TicketRepository ticketRepository;
     private final ReviewRepository reviewRepository;
+    private final RouteRepository routeRepository;
+
+    @GetMapping("/locations")
+    public ResponseEntity<List<String>> getLocations() {
+        List<String> origins = routeRepository.findDistinctOrigins();
+        List<String> destinations = routeRepository.findDistinctDestinations();
+        List<String> all = Stream.concat(origins.stream(), destinations.stream())
+                .distinct().sorted().toList();
+        return ResponseEntity.ok(all);
+    }
 
     @GetMapping("/schedules/{id}/seats")
     public ResponseEntity<Map<String, Object>> getSeats(@PathVariable Long id) {
@@ -106,6 +120,47 @@ public class CustomerController {
     @GetMapping("/schedules/{id}/reviews")
     public ResponseEntity<List<ReviewResponse>> getReviews(@PathVariable Long id) {
         return ResponseEntity.ok(reviewService.getReviewsByVehicleRoute(id));
+    }
+
+    @GetMapping("/suggestions")
+    public ResponseEntity<List<SuggestionResponse>> getSuggestions() {
+        LocalDateTime now = LocalDateTime.now();
+
+        // Lấy top routeId theo lượt đặt vé, fallback sang tất cả route nếu chưa có vé
+        List<Object[]> popular = ticketRepository.findPopularRouteIdsWithCount();
+        List<Long> routeIds;
+        if (popular.isEmpty()) {
+            routeIds = routeRepository.findAll().stream().map(r -> r.getId()).toList();
+        } else {
+            routeIds = popular.stream().map(row -> (Long) row[0]).toList();
+        }
+
+        List<SuggestionResponse> suggestions = routeIds.stream()
+                .limit(6)
+                .map(routeId -> routeRepository.findById(routeId).map(route -> {
+                    List<com.busmanagement.entity.VehicleRoute> upcoming =
+                            vehicleRouteRepository.findScheduledByRouteId(routeId, now);
+                    LocalDateTime nextDep = upcoming.isEmpty() ? null : upcoming.get(0).getDepartureTime();
+                    BigDecimal lowestPrice = upcoming.isEmpty() ? route.getBasePrice() : upcoming.stream()
+                            .map(vr -> vr.getRoute().getBasePrice())
+                            .min(BigDecimal::compareTo)
+                            .orElse(route.getBasePrice());
+                    Long bookings = ticketRepository.countByRouteId(routeId);
+                    return new SuggestionResponse(
+                            routeId,
+                            route.getOrigin(),
+                            route.getDestination(),
+                            route.getName(),
+                            lowestPrice,
+                            nextDep,
+                            upcoming.size(),
+                            bookings
+                    );
+                }).orElse(null))
+                .filter(s -> s != null)
+                .toList();
+
+        return ResponseEntity.ok(suggestions);
     }
 
     private Comparator<VehicleRoute> buildComparator(String sortBy) {

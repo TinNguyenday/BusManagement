@@ -37,4 +37,10 @@ public interface VehicleRouteRepository extends JpaRepository<VehicleRoute, Long
 
     @Query("SELECT vr FROM VehicleRoute vr WHERE vr.status = 'SCHEDULED' AND vr.departureTime >= :now ORDER BY vr.departureTime ASC")
     List<VehicleRoute> findAllScheduled(@Param("now") LocalDateTime now);
+
+    @Query("SELECT vr FROM VehicleRoute vr WHERE vr.status = 'SCHEDULED' AND vr.departureTime < :now")
+    List<VehicleRoute> findScheduledDeparted(@Param("now") LocalDateTime now);
+
+    @Query("SELECT vr FROM VehicleRoute vr WHERE vr.route.id = :routeId AND vr.status = 'SCHEDULED' AND vr.departureTime >= :now ORDER BY vr.departureTime ASC")
+    List<VehicleRoute> findScheduledByRouteId(@Param("routeId") Long routeId, @Param("now") LocalDateTime now);
 }

@@ -17,11 +17,25 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState('');
   const [page, setPage] = useState(1);
 
-  useEffect(() => {
+  const fetchUsers = () => {
     api.get('/admin/users')
       .then(({ data }) => setUsers(data))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { fetchUsers(); }, []);
+
+  const handleDeleteCustomer = async (id, username) => {
+    if (!confirm(`Xóa tài khoản "${username}"? Toàn bộ vé và đánh giá của họ cũng bị xóa.`)) return;
+    await api.delete(`/admin/customers/${id}`);
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+  };
+
+  const handleDeleteOwner = async (id, username) => {
+    if (!confirm(`Xóa tài khoản nhà xe "${username}"? Toàn bộ công ty, xe, tài xế và chuyến đi của họ cũng bị xóa.`)) return;
+    await api.delete(`/admin/owners/${id}`);
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+  };
 
   const filtered = useMemo(() =>
     users.filter((u) => {
@@ -78,6 +92,7 @@ export default function AdminUsersPage() {
                 <th>SĐT</th>
                 <th>Vai trò</th>
                 <th>Trạng thái</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -97,6 +112,24 @@ export default function AdminUsersPage() {
                     <span className={`badge ${STATUS_CLASS[u.status] ?? 'badge-info'}`}>
                       {STATUS_LABEL[u.status] ?? u.status}
                     </span>
+                  </td>
+                  <td>
+                    {u.role?.name === 'CUSTOMER' && (
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleDeleteCustomer(u.id, u.username)}
+                      >
+                        Xóa
+                      </button>
+                    )}
+                    {u.role?.name === 'OWNER' && (
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleDeleteOwner(u.id, u.username)}
+                      >
+                        Xóa
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

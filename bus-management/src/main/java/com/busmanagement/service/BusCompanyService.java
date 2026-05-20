@@ -47,6 +47,15 @@ public class BusCompanyService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy nhà xe của bạn"));
     }
 
+    public BusCompany updateInfo(Long ownerId, String phone, String address, String bankName, String bankAccountNumber) {
+        BusCompany company = getByOwnerId(ownerId);
+        company.setPhone(phone);
+        company.setAddress(address);
+        company.setBankName(bankName);
+        company.setBankAccountNumber(bankAccountNumber);
+        return busCompanyRepository.save(company);
+    }
+
     @Transactional
     public void delete(Long companyId) {
         BusCompany company = getById(companyId);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
@@ -50,6 +50,53 @@ function StarRating({ value }) {
 
 const VEHICLE_TYPES = ['Ghế ngồi', 'Giường nằm', 'Limousine'];
 
+function LocationInput({ label, value, onChange, placeholder, allOptions, onEnter, style }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const filtered = value.length > 0
+    ? allOptions.filter(opt => opt.toLowerCase().includes(value.toLowerCase()) && opt.toLowerCase() !== value.toLowerCase()).slice(0, 7)
+    : [];
+
+  useEffect(() => {
+    const handleClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="form-group" style={{ flex: 1, minWidth: 130, position: 'relative', ...style }}>
+      <label>{label}</label>
+      <input
+        value={value}
+        onChange={e => { onChange(e.target.value); setOpen(true); }}
+        placeholder={placeholder}
+        onKeyDown={e => e.key === 'Enter' && onEnter?.()}
+        onFocus={() => setOpen(true)}
+        autoComplete="off"
+      />
+      {open && filtered.length > 0 && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+          background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8,
+          boxShadow: 'var(--shadow-lg)', marginTop: 4, maxHeight: 220, overflowY: 'auto',
+        }}>
+          {filtered.map(opt => (
+            <div
+              key={opt}
+              onMouseDown={() => { onChange(opt); setOpen(false); }}
+              style={{ padding: '9px 14px', fontSize: 13.5, cursor: 'pointer', color: 'var(--text)', transition: 'background 0.1s' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
+              onMouseLeave={e => e.currentTarget.style.background = ''}
+            >
+              📍 {opt}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CustomerSearchPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -66,6 +113,19 @@ export default function CustomerSearchPage() {
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [sortBy, setSortBy] = useState('time_asc');
   const [maxPrice, setMaxPrice] = useState('');
+
+  // Suggestions
+  const [suggestions, setSuggestions] = useState([]);
+  const [locations, setLocations] = useState([]);
+
+  useEffect(() => {
+    api.get('/customer/suggestions')
+      .then(res => setSuggestions(res.data))
+      .catch(() => {});
+    api.get('/customer/locations')
+      .then(res => setLocations(res.data))
+      .catch(() => {});
+  }, []);
 
   // Seat map modal
   const [seatModal, setSeatModal] = useState(null); // { schedule }
@@ -216,15 +276,14 @@ export default function CustomerSearchPage() {
           <p className="cl-hero-sub">Hơn 100 tuyến đường — Đặt vé chỉ trong vài giây</p>
 
           <div className="cl-search-box">
-            <div className="form-group" style={{ flex: 1, minWidth: 130 }}>
-              <label>Điểm đi</label>
-              <input
-                value={origin}
-                onChange={(e) => setOrigin(e.target.value)}
-                placeholder="Hà Nội"
-                onKeyDown={(e) => e.key === 'Enter' && search()}
-              />
-            </div>
+            <LocationInput
+              label="Điểm đi"
+              value={origin}
+              onChange={setOrigin}
+              placeholder="Hà Nội"
+              allOptions={locations}
+              onEnter={search}
+            />
 
             <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 9 }}>
               <button
@@ -239,15 +298,14 @@ export default function CustomerSearchPage() {
               >⇄</button>
             </div>
 
-            <div className="form-group" style={{ flex: 1, minWidth: 130 }}>
-              <label>Điểm đến</label>
-              <input
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                placeholder="TP.HCM"
-                onKeyDown={(e) => e.key === 'Enter' && search()}
-              />
-            </div>
+            <LocationInput
+              label="Điểm đến"
+              value={destination}
+              onChange={setDestination}
+              placeholder="TP.HCM"
+              allOptions={locations}
+              onEnter={search}
+            />
 
             <div className="form-group" style={{ minWidth: 140 }}>
               <label>Ngày đi</label>
@@ -265,6 +323,62 @@ export default function CustomerSearchPage() {
           </div>
         </div>
       </section>
+
+      {/* SUGGESTIONS */}
+      {!searched && suggestions.length > 0 && (
+        <div style={{ padding: '28px 24px 0' }}>
+          <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', marginBottom: 14 }}>
+            🔥 Tuyến đường phổ biến
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+            {suggestions.map(s => (
+              <div
+                key={s.routeId}
+                onClick={() => {
+                  setOrigin(s.origin);
+                  setDestination(s.destination);
+                  setDate(getTodayStr());
+                  setTimeout(() => search(), 50);
+                }}
+                style={{
+                  background: 'var(--bg2)', border: '1.5px solid var(--border)',
+                  borderRadius: 'var(--radius)', padding: '16px 18px',
+                  cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = 'var(--shadow)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--text)' }}>
+                    {s.origin}
+                    <span style={{ color: 'var(--primary)', margin: '0 6px' }}>→</span>
+                    {s.destination}
+                  </div>
+                  {s.totalBookings > 0 && (
+                    <span style={{
+                      background: 'var(--primary-light)', color: 'var(--primary)',
+                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                    }}>
+                      🔥 {s.totalBookings} lượt
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 8 }}>
+                  {s.routeName}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: '#f97316' }}>
+                    từ {formatPrice(s.lowestPrice)}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+                    {s.availableTrips > 0 ? `${s.availableTrips} chuyến · ${formatDate(s.nextDeparture)}` : 'Chưa có chuyến sắp tới'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* RESULTS + FILTERS */}
       <div className="cl-results" style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>

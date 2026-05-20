@@ -36,8 +36,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         String picture = oauth2User.getAttribute("picture");
 
         User user = userRepository.findByEmail(email).orElseGet(() -> {
-            Role ownerRole = roleRepository.findByName("OWNER")
-                    .orElseThrow(() -> new RuntimeException("Role OWNER not found"));
+            Role customerRole = roleRepository.findByName("CUSTOMER")
+                    .orElseThrow(() -> new RuntimeException("Role CUSTOMER not found"));
 
             String baseUsername = email.split("@")[0];
             String username = baseUsername;
@@ -51,9 +51,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                     .username(username)
                     .fullName(name)
                     .avatarUrl(picture)
-                    .role(ownerRole)
+                    .role(customerRole)
                     .authProvider("GOOGLE")
-                    .status("PENDING")
+                    .status("ACTIVE")
                     .build());
         });
 

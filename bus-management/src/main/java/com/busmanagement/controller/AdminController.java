@@ -8,8 +8,10 @@ import com.busmanagement.entity.User;
 import com.busmanagement.entity.Vehicle;
 import com.busmanagement.exception.ApiException;
 import com.busmanagement.repository.DriverRepository;
+import com.busmanagement.repository.ReviewRepository;
 import com.busmanagement.repository.RoleRepository;
 import com.busmanagement.repository.RouteRepository;
+import com.busmanagement.repository.TicketRepository;
 import com.busmanagement.repository.UserRepository;
 import com.busmanagement.repository.VehicleRepository;
 import org.springframework.http.HttpStatus;
@@ -20,6 +22,7 @@ import com.busmanagement.service.VehicleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -40,6 +43,8 @@ public class AdminController {
     private final DriverRepository driverRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TicketRepository ticketRepository;
+    private final ReviewRepository reviewRepository;
 
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
@@ -153,6 +158,41 @@ public class AdminController {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy nhân viên"));
         if (!"STAFF".equals(user.getRole().getName()))
             throw new ApiException(HttpStatus.BAD_REQUEST, "Tài khoản này không phải Staff");
+        userRepository.delete(user);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/customers")
+    public ResponseEntity<List<User>> getCustomers() {
+        Role customerRole = roleRepository.findByName("CUSTOMER")
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Role không tồn tại"));
+        return ResponseEntity.ok(userRepository.findByRoleId(customerRole.getId()));
+    }
+
+    @DeleteMapping("/customers/{id}")
+    @Transactional
+    public ResponseEntity<Void> deleteCustomer(@PathVariable Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản"));
+        if (!"CUSTOMER".equals(user.getRole().getName()))
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Tài khoản này không phải Customer");
+        reviewRepository.deleteByCustomerId(id);
+        ticketRepository.deleteByCustomerId(id);
+        userRepository.delete(user);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/owners/{id}")
+    @Transactional
+    public ResponseEntity<Void> deleteOwner(@PathVariable Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản"));
+        if (!"OWNER".equals(user.getRole().getName()))
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Tài khoản này không phải Owner");
+        busCompanyService.getAll().stream()
+                .filter(c -> c.getOwner().getId().equals(id))
+                .findFirst()
+                .ifPresent(c -> busCompanyService.delete(c.getId()));
         userRepository.delete(user);
         return ResponseEntity.noContent().build();
     }

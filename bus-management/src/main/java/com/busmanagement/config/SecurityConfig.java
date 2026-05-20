@@ -47,7 +47,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/staff/**").hasRole("STAFF")
                         .requestMatchers("/api/owner/**").hasRole("OWNER")
-                        .requestMatchers("/api/customer/schedules", "/api/customer/schedules/**").permitAll()
+                        .requestMatchers("/api/customer/schedules", "/api/customer/schedules/**", "/api/customer/locations", "/api/customer/suggestions").permitAll()
                         .requestMatchers("/api/customer/**").hasRole("CUSTOMER")
                         .requestMatchers("/api/routes/**").authenticated()
                         .anyRequest().authenticated()
@@ -78,7 +78,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfig() {
         CorsConfiguration cfg = new CorsConfiguration();
         cfg.setAllowedOrigins(List.of(allowedOrigins.split(",")));
-        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
         cfg.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();

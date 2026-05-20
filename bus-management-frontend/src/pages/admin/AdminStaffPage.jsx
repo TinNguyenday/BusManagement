@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../context/ToastContext';
+import SearchInput from '../../components/SearchInput';
+import Pagination from '../../components/Pagination';
+
+const PAGE_SIZE = 10;
 
 export default function AdminStaffPage() {
   const toast = useToast();
@@ -9,6 +13,8 @@ export default function AdminStaffPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ username: '', email: '', password: '', fullName: '', phone: '' });
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
   const fetchStaff = async () => {
     setLoading(true);
@@ -21,6 +27,15 @@ export default function AdminStaffPage() {
   };
 
   useEffect(() => { fetchStaff(); }, []);
+  useEffect(() => setPage(1), [search]);
+
+  const filtered = useMemo(() => staff.filter(s => {
+    const q = search.toLowerCase();
+    return !search || s.fullName?.toLowerCase().includes(q) || s.username?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q);
+  }), [staff, search]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,9 +66,12 @@ export default function AdminStaffPage() {
     <div className="page">
       <div className="page-header">
         <h1>Quản lý nhân viên</h1>
-        <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-          {showForm ? 'Hủy' : '+ Thêm nhân viên'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <SearchInput value={search} onChange={setSearch} placeholder="Tìm tên, username, email..." />
+          <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
+            {showForm ? 'Hủy' : '+ Thêm nhân viên'}
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -92,13 +110,15 @@ export default function AdminStaffPage() {
         <div className="loading">Đang tải...</div>
       ) : staff.length === 0 ? (
         <div className="empty">Chưa có nhân viên nào</div>
+      ) : filtered.length === 0 ? (
+        <div className="empty">Không tìm thấy nhân viên phù hợp</div>
       ) : (
         <table className="table">
           <thead>
             <tr><th>#</th><th>Họ tên</th><th>Tên đăng nhập</th><th>Email</th><th>SĐT</th><th>Hành động</th></tr>
           </thead>
           <tbody>
-            {staff.map((s) => (
+            {paginated.map((s) => (
               <tr key={s.id}>
                 <td>{s.id}</td>
                 <td>{s.fullName}</td>
@@ -112,6 +132,9 @@ export default function AdminStaffPage() {
             ))}
           </tbody>
         </table>
+      )}
+      {totalPages > 1 && (
+        <Pagination page={page} totalPages={totalPages} onChange={setPage} />
       )}
     </div>
   );

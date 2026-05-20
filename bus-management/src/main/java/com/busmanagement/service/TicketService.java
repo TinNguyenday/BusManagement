@@ -24,6 +24,7 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final VehicleRouteRepository vehicleRouteRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     public List<Ticket> getMyTickets(Long customerId) {
         return ticketRepository.findByCustomerIdOrderByBookedAtDesc(customerId);
@@ -63,7 +64,9 @@ public class TicketService {
                 .status("BOOKED")
                 .build();
 
-        return ticketRepository.save(ticket);
+        Ticket saved = ticketRepository.save(ticket);
+        emailService.sendBookingConfirmation(saved);
+        return saved;
     }
 
     @Transactional
@@ -78,6 +81,8 @@ public class TicketService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Vé đã bị hủy trước đó");
 
         ticket.setStatus("CANCELLED");
-        return ticketRepository.save(ticket);
+        Ticket cancelled = ticketRepository.save(ticket);
+        emailService.sendCancellationNotification(cancelled);
+        return cancelled;
     }
 }
