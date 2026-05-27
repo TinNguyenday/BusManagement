@@ -1,5 +1,6 @@
 package com.busmanagement.service;
 
+import com.busmanagement.entity.Status;
 import com.busmanagement.entity.VehicleRoute;
 import com.busmanagement.repository.VehicleRouteRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +36,7 @@ public class AssignmentScheduler {
             LocalDateTime completionTime = vr.getDepartureTime().plusMinutes(minutesAfterDeparture);
 
             if (now.isAfter(completionTime)) {
-                vr.setStatus("COMPLETED");
+                vr.setStatus(Status.COMPLETED);
                 vehicleRouteRepository.save(vr);
                 count++;
             }

@@ -22,6 +22,11 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("SELECT COUNT(r) FROM Review r WHERE r.ticket.vehicleRoute.id = :vehicleRouteId")
     Integer getReviewCountByVehicleRouteId(@Param("vehicleRouteId") Long vehicleRouteId);
 
+    // Fix #2: delete reviews whose tickets belong to given routes (before deleting the tickets)
+    @Modifying
+    @Query("DELETE FROM Review r WHERE r.ticket.vehicleRoute.id IN :routeIds")
+    void deleteByTicketVehicleRouteIdIn(@Param("routeIds") List<Long> routeIds);
+
     @Modifying
     @Query("DELETE FROM Review r WHERE r.ticket.customer.id = :customerId")
     void deleteByCustomerId(@Param("customerId") Long customerId);

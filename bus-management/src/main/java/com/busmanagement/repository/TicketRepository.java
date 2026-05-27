@@ -25,6 +25,8 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     @Query("DELETE FROM Ticket t WHERE t.vehicleRoute.id IN :routeIds")
     void deleteByVehicleRouteIdIn(@Param("routeIds") List<Long> routeIds);
 
+    List<Ticket> findByBookingGroupCode(String bookingGroupCode);
+
     @Modifying
     @Query("DELETE FROM Ticket t WHERE t.customer.id = :customerId")
     void deleteByCustomerId(@Param("customerId") Long customerId);

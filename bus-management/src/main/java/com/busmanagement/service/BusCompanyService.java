@@ -1,11 +1,13 @@
 package com.busmanagement.service;
 
 import com.busmanagement.entity.BusCompany;
+import com.busmanagement.entity.Status;
 import com.busmanagement.entity.User;
 import com.busmanagement.entity.VehicleRoute;
 import com.busmanagement.exception.ApiException;
 import com.busmanagement.repository.BusCompanyRepository;
 import com.busmanagement.repository.DriverRepository;
+import com.busmanagement.repository.ReviewRepository;
 import com.busmanagement.repository.TicketRepository;
 import com.busmanagement.repository.UserRepository;
 import com.busmanagement.repository.VehicleRepository;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +31,7 @@ public class BusCompanyService {
     private final DriverRepository driverRepository;
     private final VehicleRouteRepository vehicleRouteRepository;
     private final TicketRepository ticketRepository;
+    private final ReviewRepository reviewRepository;
 
     public List<BusCompany> getAll() {
         return busCompanyRepository.findAll();
@@ -47,6 +51,10 @@ public class BusCompanyService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy nhà xe của bạn"));
     }
 
+    public Optional<BusCompany> findByOwnerId(Long ownerId) {
+        return busCompanyRepository.findByOwnerId(ownerId);
+    }
+
     public BusCompany updateInfo(Long ownerId, String phone, String address, String bankName, String bankAccountNumber) {
         BusCompany company = getByOwnerId(ownerId);
         company.setPhone(phone);
@@ -63,6 +71,7 @@ public class BusCompanyService {
         List<VehicleRoute> routes = vehicleRouteRepository.findByBusCompanyId(companyId);
         if (!routes.isEmpty()) {
             List<Long> routeIds = routes.stream().map(VehicleRoute::getId).toList();
+            reviewRepository.deleteByTicketVehicleRouteIdIn(routeIds); // Fix #2: reviews before tickets
             ticketRepository.deleteByVehicleRouteIdIn(routeIds);
             vehicleRouteRepository.deleteAll(routes);
         }
@@ -78,12 +87,12 @@ public class BusCompanyService {
     @Transactional
     public BusCompany approve(Long companyId, Long adminId) {
         BusCompany company = getById(companyId);
-        company.setStatus("APPROVED");
+        company.setStatus(Status.APPROVED);
         company.setApprovedAt(LocalDateTime.now());
         company.setApprovedBy(adminId);
 
         User owner = company.getOwner();
-        owner.setStatus("ACTIVE");
+        owner.setStatus(Status.ACTIVE);
         userRepository.save(owner);
 
         return busCompanyRepository.save(company);
@@ -92,10 +101,10 @@ public class BusCompanyService {
     @Transactional
     public BusCompany reject(Long companyId) {
         BusCompany company = getById(companyId);
-        company.setStatus("REJECTED");
+        company.setStatus(Status.REJECTED);
 
         User owner = company.getOwner();
-        owner.setStatus("REJECTED");
+        owner.setStatus(Status.REJECTED);
         userRepository.save(owner);
 
         return busCompanyRepository.save(company);

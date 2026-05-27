@@ -41,7 +41,7 @@ public class BusCompany {
 
     @Column(nullable = false)
     @Builder.Default
-    private String status = "PENDING"; // PENDING / APPROVED / REJECTED
+    private String status = Status.PENDING;
 
     private LocalDateTime registeredAt;
     private LocalDateTime approvedAt;

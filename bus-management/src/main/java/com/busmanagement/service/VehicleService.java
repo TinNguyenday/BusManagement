@@ -2,6 +2,7 @@ package com.busmanagement.service;
 
 import com.busmanagement.dto.request.VehicleRequest;
 import com.busmanagement.entity.BusCompany;
+import com.busmanagement.entity.Status;
 import com.busmanagement.entity.Vehicle;
 import com.busmanagement.entity.VehicleRoute;
 import com.busmanagement.exception.ApiException;
@@ -24,6 +25,10 @@ public class VehicleService {
     private final TicketRepository ticketRepository;
     private final BusCompanyService busCompanyService;
 
+    public List<Vehicle> getAll() {
+        return vehicleRepository.findAll();
+    }
+
     public List<Vehicle> getByOwner(Long ownerId) {
         BusCompany company = busCompanyService.getByOwnerId(ownerId);
         return vehicleRepository.findByBusCompanyId(company.getId());
@@ -38,7 +43,7 @@ public class VehicleService {
             throw new ApiException(HttpStatus.CONFLICT, "Biển số đã tồn tại");
 
         BusCompany company = busCompanyService.getByOwnerId(ownerId);
-        if (!"APPROVED".equals(company.getStatus()))
+        if (!Status.APPROVED.equals(company.getStatus()))
             throw new ApiException(HttpStatus.FORBIDDEN, "Nhà xe chưa được duyệt");
 
         Vehicle vehicle = Vehicle.builder()
@@ -81,7 +86,7 @@ public class VehicleService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy xe"));
         if (!v.getBusCompany().getOwner().getId().equals(ownerId))
             throw new ApiException(HttpStatus.FORBIDDEN, "Không phải xe của bạn");
-        if (vehicleRouteRepository.existsByVehicleIdAndStatus(vehicleId, "SCHEDULED"))
+        if (vehicleRouteRepository.existsByVehicleIdAndStatus(vehicleId, Status.SCHEDULED))
             throw new ApiException(HttpStatus.CONFLICT, "Xe đang có chuyến SCHEDULED, hãy xóa hoặc hủy phân công trước");
 
         List<VehicleRoute> routes = vehicleRouteRepository.findByVehicleId(vehicleId);

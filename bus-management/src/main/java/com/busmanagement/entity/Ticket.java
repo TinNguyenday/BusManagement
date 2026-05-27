@@ -27,9 +27,12 @@ public class Ticket {
     @Column(name = "seat_number")
     private Integer seatNumber;
 
+    @Column(name = "booking_group_code")
+    private String bookingGroupCode;
+
     @Column(nullable = false)
     @Builder.Default
-    private String status = "BOOKED"; // BOOKED, CANCELLED
+    private String status = Status.BOOKED;
 
     @Column(nullable = false)
     private LocalDateTime bookedAt;

@@ -1,5 +1,6 @@
 package com.busmanagement.dto.request;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -10,5 +11,6 @@ public class BookTicketRequest {
     private Long vehicleRouteId;
 
     @NotNull
+    @Min(1)
     private Integer seatNumber;
 }

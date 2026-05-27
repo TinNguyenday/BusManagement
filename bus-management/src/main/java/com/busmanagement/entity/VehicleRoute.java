@@ -34,7 +34,7 @@ public class VehicleRoute {
 
     @Column(nullable = false)
     @Builder.Default
-    private String status = "SCHEDULED";
+    private String status = Status.SCHEDULED;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;

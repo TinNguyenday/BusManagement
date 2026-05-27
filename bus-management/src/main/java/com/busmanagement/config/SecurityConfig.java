@@ -1,5 +1,6 @@
 package com.busmanagement.config;
 
+import com.busmanagement.entity.RoleName;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,11 +45,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/register/customer").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers("/api/auth/change-password").authenticated()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/staff/**").hasRole("STAFF")
-                        .requestMatchers("/api/owner/**").hasRole("OWNER")
+                        .requestMatchers("/api/admin/**").hasRole(RoleName.ADMIN)
+                        .requestMatchers("/api/staff/**").hasRole(RoleName.STAFF)
+                        .requestMatchers("/api/owner/**").hasRole(RoleName.OWNER)
                         .requestMatchers("/api/customer/schedules", "/api/customer/schedules/**", "/api/customer/locations", "/api/customer/suggestions").permitAll()
-                        .requestMatchers("/api/customer/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/customer/**").hasRole(RoleName.CUSTOMER)
                         .requestMatchers("/api/routes/**").authenticated()
                         .anyRequest().authenticated()
                 )

@@ -37,11 +37,11 @@ public class User {
 
     @Column(nullable = false)
     @Builder.Default
-    private String authProvider = "LOCAL"; // LOCAL / GOOGLE / FACEBOOK
+    private String authProvider = Status.LOCAL;
 
     @Column(nullable = false)
     @Builder.Default
-    private String status = "ACTIVE"; // INCOMPLETE / PENDING / ACTIVE / REJECTED
+    private String status = Status.ACTIVE;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;

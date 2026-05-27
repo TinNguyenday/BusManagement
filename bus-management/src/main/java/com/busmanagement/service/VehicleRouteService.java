@@ -5,7 +5,6 @@ import com.busmanagement.entity.*;
 import com.busmanagement.exception.ApiException;
 import com.busmanagement.repository.*;
 import lombok.RequiredArgsConstructor;
-import com.busmanagement.repository.TicketRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +22,7 @@ public class VehicleRouteService {
     private final RouteRepository routeRepository;
     private final BusCompanyService busCompanyService;
     private final TicketRepository ticketRepository;
+    private final ReviewRepository reviewRepository;
 
     public List<VehicleRoute> getByOwner(Long ownerId) {
         BusCompany company = busCompanyService.getByOwnerId(ownerId);
@@ -45,7 +45,6 @@ public class VehicleRouteService {
         Route route = routeRepository.findById(req.getRouteId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy tuyến"));
 
-        // check conflict within +/- 4 hours
         LocalDateTime start = req.getDepartureTime().minusHours(4);
         LocalDateTime end = req.getDepartureTime().plusHours(4);
 
@@ -59,7 +58,7 @@ public class VehicleRouteService {
                 .driver(driver)
                 .route(route)
                 .departureTime(req.getDepartureTime())
-                .status("SCHEDULED")
+                .status(Status.SCHEDULED)
                 .build();
 
         return vehicleRouteRepository.save(vr);
@@ -69,6 +68,8 @@ public class VehicleRouteService {
     public VehicleRoute updateStatus(Long id, String status, Long ownerId) {
         VehicleRoute vr = vehicleRouteRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy phân công"));
+        if (!List.of(Status.SCHEDULED, Status.COMPLETED, Status.CANCELLED).contains(status))
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Trạng thái không hợp lệ");
         BusCompany company = busCompanyService.getByOwnerId(ownerId);
         if (!vr.getVehicle().getBusCompany().getId().equals(company.getId()))
             throw new ApiException(HttpStatus.FORBIDDEN, "Không phải phân công của bạn");
@@ -83,6 +84,7 @@ public class VehicleRouteService {
         BusCompany company = busCompanyService.getByOwnerId(ownerId);
         if (!vr.getVehicle().getBusCompany().getId().equals(company.getId()))
             throw new ApiException(HttpStatus.FORBIDDEN, "Không phải phân công của bạn");
+        reviewRepository.deleteByTicketVehicleRouteIdIn(List.of(id));
         ticketRepository.deleteByVehicleRouteIdIn(List.of(id));
         vehicleRouteRepository.delete(vr);
     }

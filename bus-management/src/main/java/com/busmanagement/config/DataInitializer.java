@@ -32,38 +32,38 @@ public class DataInitializer implements CommandLineRunner {
         @Transactional
         public void run(String... args) {
 
-                createRoleIfNotExists("ADMIN");
-                createRoleIfNotExists("STAFF");
-                createRoleIfNotExists("OWNER");
-                createRoleIfNotExists("CUSTOMER");
+                createRoleIfNotExists(RoleName.ADMIN);
+                createRoleIfNotExists(RoleName.STAFF);
+                createRoleIfNotExists(RoleName.OWNER);
+                createRoleIfNotExists(RoleName.CUSTOMER);
 
                 if (!userRepository.existsByUsername("admin")) {
-                        Role adminRole = roleRepository.findByName("ADMIN").orElseThrow();
+                        Role adminRole = roleRepository.findByName(RoleName.ADMIN).orElseThrow();
                         userRepository.save(User.builder()
                                         .username("admin").email("admin@busgo.vn")
                                         .passwordHash(passwordEncoder.encode("admin123"))
                                         .fullName("System Admin").phone("0900000000")
-                                        .role(adminRole).authProvider("LOCAL").status("ACTIVE").build());
+                                        .role(adminRole).authProvider(Status.LOCAL).status(Status.ACTIVE).build());
                         log.info("✓ admin / admin123");
                 }
 
                 if (!userRepository.existsByUsername("staff1")) {
-                        Role staffRole = roleRepository.findByName("STAFF").orElseThrow();
+                        Role staffRole = roleRepository.findByName(RoleName.STAFF).orElseThrow();
                         userRepository.save(User.builder()
                                         .username("staff1").email("staff1@busgo.vn")
                                         .passwordHash(passwordEncoder.encode("staff123"))
                                         .fullName("Nguyễn Trọng A").phone("0100000001")
-                                        .role(staffRole).authProvider("LOCAL").status("ACTIVE").build());
+                                        .role(staffRole).authProvider(Status.LOCAL).status(Status.ACTIVE).build());
                         log.info("✓ staff1 / staff123");
                 }
 
                 if (!userRepository.existsByUsername("owner1")) {
-                        Role ownerRole = roleRepository.findByName("OWNER").orElseThrow();
+                        Role ownerRole = roleRepository.findByName(RoleName.OWNER).orElseThrow();
                         User owner = userRepository.save(User.builder()
                                         .username("owner1").email("owner1@busgo.vn")
                                         .passwordHash(passwordEncoder.encode("owner123"))
                                         .fullName("Trần Văn Hùng").phone("0901234567")
-                                        .role(ownerRole).authProvider("LOCAL").status("ACTIVE").build());
+                                        .role(ownerRole).authProvider(Status.LOCAL).status(Status.ACTIVE).build());
 
                         BusCompany company = busCompanyRepository.save(BusCompany.builder()
                                         .owner(owner)
@@ -73,7 +73,7 @@ public class DataInitializer implements CommandLineRunner {
                                         .idCardNumber("079012345678")
                                         .bankAccountNumber("1234567890")
                                         .bankName("Vietcombank")
-                                        .status("APPROVED")
+                                        .status(Status.APPROVED)
                                         .build());
 
                         seedVehiclesDriversRoutes(company);
@@ -83,12 +83,12 @@ public class DataInitializer implements CommandLineRunner {
                 refreshFutureRoutesIfNeeded();
 
                 if (!userRepository.existsByUsername("customer1")) {
-                        Role customerRole = roleRepository.findByName("CUSTOMER").orElseThrow();
+                        Role customerRole = roleRepository.findByName(RoleName.CUSTOMER).orElseThrow();
                         userRepository.save(User.builder()
                                         .username("customer1").email("customer1@busgo.vn")
                                         .passwordHash(passwordEncoder.encode("customer123"))
                                         .fullName("Lê Thị Lan").phone("0912345678")
-                                        .role(customerRole).authProvider("LOCAL").status("ACTIVE").build());
+                                        .role(customerRole).authProvider(Status.LOCAL).status(Status.ACTIVE).build());
                         log.info("✓ customer1 / customer123");
                 }
         }
@@ -147,22 +147,22 @@ public class DataInitializer implements CommandLineRunner {
                 vehicleRouteRepository.save(VehicleRoute.builder()
                                 .vehicle(v1).driver(d1).route(r1)
                                 .departureTime(base.plusDays(1).withHour(8).withMinute(0).withSecond(0))
-                                .status("SCHEDULED").build());
+                                .status(Status.SCHEDULED).build());
 
                 vehicleRouteRepository.save(VehicleRoute.builder()
                                 .vehicle(v2).driver(d2).route(r2)
                                 .departureTime(base.plusDays(1).withHour(14).withMinute(0).withSecond(0))
-                                .status("SCHEDULED").build());
+                                .status(Status.SCHEDULED).build());
 
                 vehicleRouteRepository.save(VehicleRoute.builder()
                                 .vehicle(v1).driver(d2).route(r3)
                                 .departureTime(base.plusDays(2).withHour(20).withMinute(0).withSecond(0))
-                                .status("SCHEDULED").build());
+                                .status(Status.SCHEDULED).build());
 
                 vehicleRouteRepository.save(VehicleRoute.builder()
                                 .vehicle(v2).driver(d1).route(r1)
                                 .departureTime(base.plusDays(3).withHour(7).withMinute(30).withSecond(0))
-                                .status("SCHEDULED").build());
+                                .status(Status.SCHEDULED).build());
 
                 log.info(" Data mẫu: 2 xe, 2 tài xế, 3 tuyến, 4 chuyến sắp tới");
         }
@@ -182,19 +182,19 @@ public class DataInitializer implements CommandLineRunner {
                         vehicleRouteRepository.save(VehicleRoute.builder()
                                 .vehicle(vehicles.get(0)).driver(drivers.get(0)).route(routes.get(0))
                                 .departureTime(now.plusDays(1).withHour(8).withMinute(0).withSecond(0))
-                                .status("SCHEDULED").build());
+                                .status(Status.SCHEDULED).build());
                         vehicleRouteRepository.save(VehicleRoute.builder()
                                 .vehicle(vehicles.get(1)).driver(drivers.get(1)).route(routes.get(1 % routes.size()))
                                 .departureTime(now.plusDays(1).withHour(14).withMinute(0).withSecond(0))
-                                .status("SCHEDULED").build());
+                                .status(Status.SCHEDULED).build());
                         vehicleRouteRepository.save(VehicleRoute.builder()
                                 .vehicle(vehicles.get(0)).driver(drivers.get(1)).route(routes.get(2 % routes.size()))
                                 .departureTime(now.plusDays(2).withHour(20).withMinute(0).withSecond(0))
-                                .status("SCHEDULED").build());
+                                .status(Status.SCHEDULED).build());
                         vehicleRouteRepository.save(VehicleRoute.builder()
                                 .vehicle(vehicles.get(1)).driver(drivers.get(0)).route(routes.get(0))
                                 .departureTime(now.plusDays(3).withHour(7).withMinute(30).withSecond(0))
-                                .status("SCHEDULED").build());
+                                .status(Status.SCHEDULED).build());
                         log.info("✓ Refreshed: 4 chuyến mới vì tất cả đã quá hạn");
                 });
         }

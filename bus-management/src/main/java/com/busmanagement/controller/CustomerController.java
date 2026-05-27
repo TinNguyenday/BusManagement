@@ -1,16 +1,18 @@
 package com.busmanagement.controller;
 
+import com.busmanagement.dto.request.BookRoundTripRequest;
 import com.busmanagement.dto.request.BookTicketRequest;
 import com.busmanagement.dto.request.ReviewRequest;
 import com.busmanagement.dto.response.ReviewResponse;
 import com.busmanagement.dto.response.ScheduleSearchResponse;
 import com.busmanagement.dto.response.SuggestionResponse;
 import com.busmanagement.entity.Route;
-import com.busmanagement.repository.RouteRepository;
+import com.busmanagement.entity.Status;
 import com.busmanagement.entity.Ticket;
 import com.busmanagement.entity.VehicleRoute;
 import com.busmanagement.exception.ApiException;
 import com.busmanagement.repository.ReviewRepository;
+import com.busmanagement.repository.RouteRepository;
 import com.busmanagement.repository.TicketRepository;
 import com.busmanagement.repository.VehicleRouteRepository;
 import com.busmanagement.service.ReviewService;
@@ -28,6 +30,7 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 @RestController
@@ -74,21 +77,21 @@ public class CustomerController {
             @RequestParam(required = false) String vehicleType,
             @RequestParam(defaultValue = "time_asc") String sortBy) {
 
-        String o = (origin != null && !origin.isBlank()) ? origin.trim().toLowerCase() : null;
-        String d = (destination != null && !destination.isBlank()) ? destination.trim().toLowerCase() : null;
-        String vt = (vehicleType != null && !vehicleType.isBlank()) ? vehicleType.trim() : null;
+        String o  = (origin != null && !origin.isBlank())          ? origin.trim().toLowerCase()      : null;
+        String d  = (destination != null && !destination.isBlank()) ? destination.trim().toLowerCase() : null;
+        String vt = (vehicleType != null && !vehicleType.isBlank()) ? vehicleType.trim()               : null;
 
         List<VehicleRoute> all = vehicleRouteRepository.findAllScheduled(LocalDateTime.now());
 
         List<ScheduleSearchResponse> results = all.stream()
-                .filter(vr -> o == null || vr.getRoute().getOrigin().toLowerCase().contains(o))
-                .filter(vr -> d == null || vr.getRoute().getDestination().toLowerCase().contains(d))
+                .filter(vr -> o  == null || vr.getRoute().getOrigin().toLowerCase().contains(o))
+                .filter(vr -> d  == null || vr.getRoute().getDestination().toLowerCase().contains(d))
                 .filter(vr -> date == null || vr.getDepartureTime().toLocalDate().equals(date))
                 .filter(vr -> minPrice == null || vr.getRoute().getBasePrice().compareTo(minPrice) >= 0)
                 .filter(vr -> maxPrice == null || vr.getRoute().getBasePrice().compareTo(maxPrice) <= 0)
                 .filter(vr -> vt == null || vt.equalsIgnoreCase(vr.getVehicle().getVehicleType()))
                 .sorted(buildComparator(sortBy))
-                .map(vr -> toSearchResponse(vr))
+                .map(this::toSearchResponse)
                 .toList();
 
         return ResponseEntity.ok(results);
@@ -100,9 +103,21 @@ public class CustomerController {
         return ResponseEntity.ok(ticketService.bookTicket(customerId, req));
     }
 
+    @PostMapping("/tickets/round-trip")
+    public ResponseEntity<List<Ticket>> bookRoundTrip(@Valid @RequestBody BookRoundTripRequest req,
+                                                      @AuthenticationPrincipal Long customerId) {
+        return ResponseEntity.ok(ticketService.bookRoundTrip(customerId, req));
+    }
+
     @GetMapping("/tickets")
     public ResponseEntity<List<Ticket>> myTickets(@AuthenticationPrincipal Long customerId) {
         return ResponseEntity.ok(ticketService.getMyTickets(customerId));
+    }
+
+    @GetMapping("/tickets/group/{groupCode}")
+    public ResponseEntity<List<Ticket>> getTicketGroup(@PathVariable String groupCode,
+                                                       @AuthenticationPrincipal Long customerId) {
+        return ResponseEntity.ok(ticketService.getTicketGroup(groupCode, customerId));
     }
 
     @PutMapping("/tickets/{id}/cancel")
@@ -126,20 +141,15 @@ public class CustomerController {
     public ResponseEntity<List<SuggestionResponse>> getSuggestions() {
         LocalDateTime now = LocalDateTime.now();
 
-        // Lấy top routeId theo lượt đặt vé, fallback sang tất cả route nếu chưa có vé
         List<Object[]> popular = ticketRepository.findPopularRouteIdsWithCount();
-        List<Long> routeIds;
-        if (popular.isEmpty()) {
-            routeIds = routeRepository.findAll().stream().map(r -> r.getId()).toList();
-        } else {
-            routeIds = popular.stream().map(row -> (Long) row[0]).toList();
-        }
+        List<Long> routeIds = popular.isEmpty()
+                ? routeRepository.findAll().stream().map(Route::getId).toList()
+                : popular.stream().map(row -> (Long) row[0]).toList();
 
         List<SuggestionResponse> suggestions = routeIds.stream()
                 .limit(6)
                 .map(routeId -> routeRepository.findById(routeId).map(route -> {
-                    List<com.busmanagement.entity.VehicleRoute> upcoming =
-                            vehicleRouteRepository.findScheduledByRouteId(routeId, now);
+                    List<VehicleRoute> upcoming = vehicleRouteRepository.findScheduledByRouteId(routeId, now);
                     LocalDateTime nextDep = upcoming.isEmpty() ? null : upcoming.get(0).getDepartureTime();
                     BigDecimal lowestPrice = upcoming.isEmpty() ? route.getBasePrice() : upcoming.stream()
                             .map(vr -> vr.getRoute().getBasePrice())
@@ -157,7 +167,7 @@ public class CustomerController {
                             bookings
                     );
                 }).orElse(null))
-                .filter(s -> s != null)
+                .filter(Objects::nonNull)
                 .toList();
 
         return ResponseEntity.ok(suggestions);
@@ -165,14 +175,14 @@ public class CustomerController {
 
     private Comparator<VehicleRoute> buildComparator(String sortBy) {
         return switch (sortBy) {
-            case "price_asc" -> Comparator.comparing(vr -> vr.getRoute().getBasePrice());
+            case "price_asc"  -> Comparator.comparing(vr -> vr.getRoute().getBasePrice());
             case "price_desc" -> Comparator.comparing((VehicleRoute vr) -> vr.getRoute().getBasePrice()).reversed();
-            default -> Comparator.comparing(VehicleRoute::getDepartureTime);
+            default           -> Comparator.comparing(VehicleRoute::getDepartureTime);
         };
     }
 
     private ScheduleSearchResponse toSearchResponse(VehicleRoute vr) {
-        long booked = ticketRepository.countByVehicleRouteIdAndStatus(vr.getId(), "BOOKED");
+        long booked = ticketRepository.countByVehicleRouteIdAndStatus(vr.getId(), Status.BOOKED);
         int total = vr.getVehicle().getSeatCount();
         Double avgRating = reviewRepository.getAverageRatingByVehicleRouteId(vr.getId());
         Integer reviewCount = reviewRepository.getReviewCountByVehicleRouteId(vr.getId());

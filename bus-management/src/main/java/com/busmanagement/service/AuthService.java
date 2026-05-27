@@ -7,7 +7,9 @@ import com.busmanagement.dto.request.RegisterRequest;
 import com.busmanagement.dto.request.UpdateProfileRequest;
 import com.busmanagement.dto.response.AuthResponse;
 import com.busmanagement.entity.BusCompany;
+import com.busmanagement.entity.RoleName;
 import com.busmanagement.entity.Role;
+import com.busmanagement.entity.Status;
 import com.busmanagement.entity.User;
 import com.busmanagement.exception.ApiException;
 import com.busmanagement.repository.BusCompanyRepository;
@@ -31,12 +33,9 @@ public class AuthService {
 
     @Transactional
     public AuthResponse registerCustomer(CustomerRegisterRequest req) {
-        if (userRepository.existsByUsername(req.getUsername()))
-            throw new ApiException(HttpStatus.CONFLICT, "Username đã tồn tại");
-        if (userRepository.existsByEmail(req.getEmail()))
-            throw new ApiException(HttpStatus.CONFLICT, "Email đã tồn tại");
+        validateUniqueCredentials(req.getUsername(), req.getEmail());
 
-        Role customerRole = roleRepository.findByName("CUSTOMER")
+        Role customerRole = roleRepository.findByName(RoleName.CUSTOMER)
                 .orElseThrow(() -> new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Role CUSTOMER không tồn tại"));
 
         User user = User.builder()
@@ -46,32 +45,21 @@ public class AuthService {
                 .fullName(req.getFullName())
                 .phone(req.getPhone())
                 .role(customerRole)
-                .authProvider("LOCAL")
-                .status("ACTIVE")
+                .authProvider(Status.LOCAL)
+                .status(Status.ACTIVE)
                 .build();
 
         user = userRepository.save(user);
         String token = jwtService.generateToken(user.getId(), user.getUsername(), customerRole.getName());
 
-        return AuthResponse.builder()
-                .token(token)
-                .userId(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .fullName(user.getFullName())
-                .role(customerRole.getName())
-                .status(user.getStatus())
-                .build();
+        return buildAuthResponse(user, customerRole.getName(), token);
     }
 
     @Transactional
     public AuthResponse registerOwner(RegisterRequest req) {
-        if (userRepository.existsByUsername(req.getUsername()))
-            throw new ApiException(HttpStatus.CONFLICT, "Username đã tồn tại");
-        if (userRepository.existsByEmail(req.getEmail()))
-            throw new ApiException(HttpStatus.CONFLICT, "Email đã tồn tại");
+        validateUniqueCredentials(req.getUsername(), req.getEmail());
 
-        Role ownerRole = roleRepository.findByName("OWNER")
+        Role ownerRole = roleRepository.findByName(RoleName.OWNER)
                 .orElseThrow(() -> new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Role OWNER không tồn tại"));
 
         User user = User.builder()
@@ -81,8 +69,8 @@ public class AuthService {
                 .fullName(req.getFullName())
                 .phone(req.getPhone())
                 .role(ownerRole)
-                .authProvider("LOCAL")
-                .status("PENDING") // chờ admin duyệt
+                .authProvider(Status.LOCAL)
+                .status(Status.PENDING)
                 .build();
 
         user = userRepository.save(user);
@@ -95,32 +83,17 @@ public class AuthService {
                 .idCardNumber(req.getIdCardNumber())
                 .bankAccountNumber(req.getBankAccountNumber())
                 .bankName(req.getBankName())
-                .status("PENDING")
+                .status(Status.PENDING)
                 .build();
         busCompanyRepository.save(company);
 
-        return AuthResponse.builder()
-                .userId(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .fullName(user.getFullName())
-                .role(ownerRole.getName())
-                .status(user.getStatus())
-                .token(null) // chưa cho token, phải đợi duyệt
-                .build();
+        return buildAuthResponse(user, ownerRole.getName(), null);
     }
 
     public AuthResponse getProfile(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản"));
-        return AuthResponse.builder()
-                .userId(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .fullName(user.getFullName())
-                .role(user.getRole().getName())
-                .status(user.getStatus())
-                .build();
+        return buildAuthResponse(user, user.getRole().getName(), null);
     }
 
     public AuthResponse updateProfile(Long userId, UpdateProfileRequest req) {
@@ -131,23 +104,14 @@ public class AuthService {
         if (req.getPhone() != null)
             user.setPhone(req.getPhone());
         userRepository.save(user);
-        return AuthResponse.builder()
-                .userId(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .fullName(user.getFullName())
-                .role(user.getRole().getName())
-                .status(user.getStatus())
-                .build();
+        return buildAuthResponse(user, user.getRole().getName(), null);
     }
 
     public void changePassword(Long userId, ChangePasswordRequest req) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản"));
-
         if (!passwordEncoder.matches(req.getCurrentPassword(), user.getPasswordHash()))
             throw new ApiException(HttpStatus.BAD_REQUEST, "Mật khẩu hiện tại không đúng");
-
         user.setPasswordHash(passwordEncoder.encode(req.getNewPassword()));
         userRepository.save(user);
     }
@@ -159,22 +123,32 @@ public class AuthService {
         if (!passwordEncoder.matches(req.getPassword(), user.getPasswordHash()))
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Sai tên đăng nhập hoặc mật khẩu");
 
-        if ("PENDING".equals(user.getStatus()))
+        if (Status.PENDING.equals(user.getStatus()))
             throw new ApiException(HttpStatus.FORBIDDEN, "Tài khoản đang chờ admin duyệt");
-        if ("REJECTED".equals(user.getStatus()))
+        if (Status.REJECTED.equals(user.getStatus()))
             throw new ApiException(HttpStatus.FORBIDDEN, "Tài khoản đã bị từ chối");
-        if (!"ACTIVE".equals(user.getStatus()))
+        if (!Status.ACTIVE.equals(user.getStatus()))
             throw new ApiException(HttpStatus.FORBIDDEN, "Tài khoản không khả dụng");
 
         String token = jwtService.generateToken(user.getId(), user.getUsername(), user.getRole().getName());
+        return buildAuthResponse(user, user.getRole().getName(), token);
+    }
 
+    private void validateUniqueCredentials(String username, String email) {
+        if (userRepository.existsByUsername(username))
+            throw new ApiException(HttpStatus.CONFLICT, "Username đã tồn tại");
+        if (userRepository.existsByEmail(email))
+            throw new ApiException(HttpStatus.CONFLICT, "Email đã tồn tại");
+    }
+
+    private AuthResponse buildAuthResponse(User user, String role, String token) {
         return AuthResponse.builder()
                 .token(token)
                 .userId(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
-                .role(user.getRole().getName())
+                .role(role)
                 .status(user.getStatus())
                 .build();
     }

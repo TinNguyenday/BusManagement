@@ -7,6 +7,8 @@ import com.busmanagement.dto.request.RegisterRequest;
 import com.busmanagement.dto.request.UpdateProfileRequest;
 import com.busmanagement.dto.response.AuthResponse;
 import com.busmanagement.service.AuthService;
+import com.busmanagement.service.LoginRateLimiter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,19 +21,26 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final LoginRateLimiter rateLimiter;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest req) {
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest req,
+                                                 HttpServletRequest httpReq) {
+        rateLimiter.check(httpReq.getRemoteAddr());
         return ResponseEntity.ok(authService.registerOwner(req));
     }
 
     @PostMapping("/register/customer")
-    public ResponseEntity<AuthResponse> registerCustomer(@Valid @RequestBody CustomerRegisterRequest req) {
+    public ResponseEntity<AuthResponse> registerCustomer(@Valid @RequestBody CustomerRegisterRequest req,
+                                                         HttpServletRequest httpReq) {
+        rateLimiter.check(httpReq.getRemoteAddr());
         return ResponseEntity.ok(authService.registerCustomer(req));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req,
+                                              HttpServletRequest httpReq) {
+        rateLimiter.check(httpReq.getRemoteAddr());
         return ResponseEntity.ok(authService.login(req));
     }
 
@@ -41,7 +50,7 @@ public class AuthController {
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<AuthResponse> updateProfile(@RequestBody UpdateProfileRequest req,
+    public ResponseEntity<AuthResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest req,
             @AuthenticationPrincipal Long userId) {
         return ResponseEntity.ok(authService.updateProfile(userId, req));
     }

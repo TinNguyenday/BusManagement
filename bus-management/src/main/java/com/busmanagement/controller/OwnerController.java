@@ -5,6 +5,7 @@ import com.busmanagement.dto.request.DriverRequest;
 import com.busmanagement.dto.request.VehicleRequest;
 import com.busmanagement.entity.BusCompany;
 import com.busmanagement.entity.Driver;
+import com.busmanagement.entity.Status;
 import com.busmanagement.entity.Vehicle;
 import com.busmanagement.entity.VehicleRoute;
 import com.busmanagement.service.BusCompanyService;
@@ -32,20 +33,22 @@ public class OwnerController {
     private final VehicleRouteService vehicleRouteService;
     private final BusCompanyService busCompanyService;
 
-    // ===== thông tin công ty =====
+    // ===== Company info =====
+
     @GetMapping("/my-company")
     public ResponseEntity<BusCompany> myCompany(@AuthenticationPrincipal Long ownerId) {
         return ResponseEntity.ok(busCompanyService.getByOwnerId(ownerId));
     }
 
     @PutMapping("/my-company")
-    public ResponseEntity<BusCompany> updateCompany(@RequestBody java.util.Map<String, String> body,
+    public ResponseEntity<BusCompany> updateCompany(@RequestBody Map<String, String> body,
                                                     @AuthenticationPrincipal Long ownerId) {
         return ResponseEntity.ok(busCompanyService.updateInfo(ownerId,
                 body.get("phone"), body.get("address"), body.get("bankName"), body.get("bankAccountNumber")));
     }
 
     // ===== Vehicles =====
+
     @GetMapping("/vehicles")
     public ResponseEntity<List<Vehicle>> getVehicles(@AuthenticationPrincipal Long ownerId) {
         return ResponseEntity.ok(vehicleService.getByOwner(ownerId));
@@ -66,7 +69,7 @@ public class OwnerController {
 
     @PatchMapping("/vehicles/{id}/type")
     public ResponseEntity<Vehicle> updateVehicleType(@PathVariable Long id,
-                                                     @RequestBody java.util.Map<String, String> body,
+                                                     @RequestBody Map<String, String> body,
                                                      @AuthenticationPrincipal Long ownerId) {
         return ResponseEntity.ok(vehicleService.updateType(id, body.get("vehicleType"), ownerId));
     }
@@ -79,6 +82,7 @@ public class OwnerController {
     }
 
     // ===== Drivers =====
+
     @GetMapping("/drivers")
     public ResponseEntity<List<Driver>> getDrivers(@AuthenticationPrincipal Long ownerId) {
         return ResponseEntity.ok(driverService.getByOwner(ownerId));
@@ -105,6 +109,7 @@ public class OwnerController {
     }
 
     // ===== Assignments =====
+
     @GetMapping("/assignments")
     public ResponseEntity<List<VehicleRoute>> getAssignments(@AuthenticationPrincipal Long ownerId) {
         return ResponseEntity.ok(vehicleRouteService.getByOwner(ownerId));
@@ -136,13 +141,22 @@ public class OwnerController {
         List<Driver> drivers = driverService.getByOwner(ownerId);
         List<VehicleRoute> assignments = vehicleRouteService.getByOwner(ownerId);
 
+        long scheduled = 0, completed = 0, cancelled = 0;
+        for (VehicleRoute a : assignments) {
+            switch (a.getStatus()) {
+                case Status.SCHEDULED -> scheduled++;
+                case Status.COMPLETED -> completed++;
+                case Status.CANCELLED -> cancelled++;
+            }
+        }
+
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalVehicles", vehicles.size());
         stats.put("totalDrivers", drivers.size());
         stats.put("totalAssignments", assignments.size());
-        stats.put("scheduled", assignments.stream().filter(a -> "SCHEDULED".equals(a.getStatus())).count());
-        stats.put("completed", assignments.stream().filter(a -> "COMPLETED".equals(a.getStatus())).count());
-        stats.put("cancelled", assignments.stream().filter(a -> "CANCELLED".equals(a.getStatus())).count());
+        stats.put("scheduled", scheduled);
+        stats.put("completed", completed);
+        stats.put("cancelled", cancelled);
         stats.put("recentAssignments", assignments.stream()
                 .sorted(Comparator.comparing(VehicleRoute::getDepartureTime).reversed())
                 .limit(5).toList());

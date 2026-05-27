@@ -4,6 +4,7 @@ import com.busmanagement.dto.request.RouteRequest;
 import com.busmanagement.entity.Route;
 import com.busmanagement.exception.ApiException;
 import com.busmanagement.repository.RouteRepository;
+import com.busmanagement.repository.VehicleRouteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import java.util.List;
 public class RouteService {
 
     private final RouteRepository routeRepository;
+    private final VehicleRouteRepository vehicleRouteRepository;
 
     public List<Route> getAll() {
         return routeRepository.findAll();
@@ -55,6 +57,8 @@ public class RouteService {
 
     public void delete(Long id) {
         Route r = getById(id);
+        if (vehicleRouteRepository.existsByRouteId(id))
+            throw new ApiException(HttpStatus.CONFLICT, "Tuyến đang có chuyến xe, không thể xóa");
         routeRepository.delete(r);
     }
 }

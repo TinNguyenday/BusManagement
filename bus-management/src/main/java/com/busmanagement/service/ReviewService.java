@@ -3,6 +3,7 @@ package com.busmanagement.service;
 import com.busmanagement.dto.request.ReviewRequest;
 import com.busmanagement.dto.response.ReviewResponse;
 import com.busmanagement.entity.Review;
+import com.busmanagement.entity.Status;
 import com.busmanagement.entity.Ticket;
 import com.busmanagement.exception.ApiException;
 import com.busmanagement.repository.ReviewRepository;
@@ -29,7 +30,10 @@ public class ReviewService {
         if (!ticket.getCustomer().getId().equals(customerId))
             throw new ApiException(HttpStatus.FORBIDDEN, "Không có quyền đánh giá vé này");
 
-        if (!"COMPLETED".equals(ticket.getVehicleRoute().getStatus()))
+        if (Status.CANCELLED.equals(ticket.getStatus()))
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Vé đã hủy không thể đánh giá");
+
+        if (!Status.COMPLETED.equals(ticket.getVehicleRoute().getStatus()))
             throw new ApiException(HttpStatus.BAD_REQUEST, "Chỉ có thể đánh giá chuyến đã hoàn thành");
 
         if (reviewRepository.findByTicketId(ticket.getId()).isPresent())
