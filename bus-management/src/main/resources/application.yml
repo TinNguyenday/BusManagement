@@ -11,7 +11,7 @@ spring:
     name: bus-management
 
   datasource:
-    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:bus_management}
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:bus_management}${PG_PARAMS:}
     username: ${PGUSER:postgres}
     password: ${PGPASSWORD:123456}
     driver-class-name: org.postgresql.Driver
